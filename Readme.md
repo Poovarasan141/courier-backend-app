@@ -17,6 +17,12 @@ A Node.js + Express backend service that provides a unified API layer over multi
 
 ---
 
+
+## To add new courier partner.
+1. Create a file courier partner integration file inside couriers folder.
+2. Import this in couriers index.js file.
+3. Nothing is required to enable new partner.
+
 ## 🏗️ Project Structure
 
 src/
@@ -129,18 +135,6 @@ Response:
 
 ---
 
-## 🧠 Features
-
-- Multi-courier abstraction layer
-- Unified order management API
-- Idempotent order creation
-- Tracking history storage
-- API key security
-- Joi validation
-- Centralized error handling
-
----
-
 ## 📊 Data Models
 
 Order:
@@ -199,16 +193,6 @@ Response:
   "success": true,
   "message": "Server is running"
 }
-
----
-
-## 📌 Future Enhancements
-
-- Kafka-based tracking updates
-- Circuit breaker for courier APIs
-- Webhook support
-- Admin dashboard
-- Multi-courier fallback routing
 
 
 
