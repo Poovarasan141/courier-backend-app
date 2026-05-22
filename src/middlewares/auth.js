@@ -4,10 +4,8 @@ const authMiddleware = (req, res, next) => {
   if (!apiKey) {
     return res.status(401).json({
       success: false,
-
       error: {
         code: "UNAUTHORIZED",
-
         message: "API key is required",
       },
     });
@@ -16,10 +14,8 @@ const authMiddleware = (req, res, next) => {
   if (apiKey !== process.env.API_KEY) {
     return res.status(401).json({
       success: false,
-
       error: {
         code: "INVALID_API_KEY",
-
         message: "Invalid API key",
       },
     });

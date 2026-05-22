@@ -16,5 +16,7 @@ module.exports = () => {
 
   router.route("/:orderId/cancel").post(controller.cancelOrder);
 
+  router.post("/api/v1/orders/bulk", controller.bulkCreateOrders);
+
   return router;
 };

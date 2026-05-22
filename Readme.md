@@ -1,279 +1,211 @@
-# Courier Aggregation Platform
+# 🚚 Courier Aggregation Service
 
-A courier aggregation service built using Node.js and Express that integrates with courier partners through a common interface.
-
-Currently supported courier partner:
-
-- Urbanebolt
-
-## Features
-
-- Dynamic courier partner integration
-- Factory pattern for courier selection
-- Order creation
-- Shipment tracking
-- Shipment cancellation
-- Idempotent order creation
-- MongoDB persistence
-- Request validation
-- Centralized error handling
-- Easily extensible for new courier partners
+A Node.js + Express backend service that provides a unified API layer over multiple courier partners (DHL, Delhivery, etc.) for order management, tracking, and cancellation.
 
 ---
 
-## Tech Stack
+## 📦 Tech Stack
 
 - Node.js
 - Express.js
-- MongoDB
-- Mongoose
-- Joi
-- Axios
+- MongoDB (Mongoose)
+- Joi (Validation)
+- UUID
+- Express Promise Router
+- Morgan (Logging)
+- CORS
 
 ---
 
-## Project Structure
+## 🏗️ Project Structure
 
-```txt
 src/
-│
 ├── config/
-│   └── axios.js
-│
-├── courier/
-│   ├── index.js
-│   └── urbanebolt.js
-│
+│   └── database.js
 ├── controllers/
-│   └── order.controller.js
-│
+│   └── orderController.js
 ├── middlewares/
-│   └── validate.middleware.js
-│
+│   ├── auth.js
+│   ├── errors.js
+│   └── validation.js
 ├── models/
 │   ├── Order.js
 │   └── TrackingHistory.js
-│
 ├── routes/
 │   ├── index.js
-│   └── order.routes.js
-│
-├── validations/
-│   └── order.validation.js
-│
+│   └── orderRoutes.js
+├── couriers/
+│   ├── index.js
+│   ├── dhl.js
+│   └── delhivery.js
 ├── utils/
+│   ├── logger.js
 │   └── errorHandler.js
-│
-├── app.js
-└── server.js
-```
+├── validations/
+│   └── orderValidation.js
 
 ---
 
-## Setup
+## 🔐 Authentication
 
-### 1. Clone Repository
+All APIs are protected using API Key authentication.
 
-```bash
-git clone <repository-url>
-cd courier-platform
-```
-
-### 2. Install Dependencies
-
-```bash
-npm install
-```
-
-### 3. Configure Environment Variables
-
-Create a `.env` file in the project root.
-
-Example:
-
-```env
-PORT=5000
-
-MONGO_URI=mongodb://localhost:27017/courier-platform
-
-URBANEBOLT_BASE_URL=https://uat.urbanebolt.in/api/v1
-URBANEBOLT_USERNAME=your_username
-URBANEBOLT_PASSWORD=your_password
-URBANEBOLT_CUSTOMER_CODE=your_customer_code
-```
-
-### 4. Run the Application
-
-Development mode:
-
-```bash
-npm run dev
-```
-
-Production mode:
-
-```bash
-npm start
-```
-
-Server will run at:
-
-```txt
-http://localhost:5000
-```
+Required Header:
+x-api-key: YOUR_API_KEY
 
 ---
 
-## API Endpoints
+## 🚀 Base URL
 
-### Health Check
-
-```http
-GET /health
-```
+/api/v1
 
 ---
 
-### Create Order
+## 📌 APIs
 
-```http
-POST /api/v1/orders
-```
+### 1. Create Order
 
-Sample Request:
+POST /orders
 
-```json
+Request Body:
 {
-  "courier_partner": "urbanebolt",
-  "order_id": "ORDER_1001",
+  "courier_partner": "dhl",
+  "order_id": "ORD123",
   "customer_name": "John Doe",
   "customer_phone": "9876543210",
   "customer_email": "john@example.com",
-  "address": "Street 1",
-  "city": "Salem",
-  "state": "Tamil Nadu",
-  "pincode": "636001",
-  "amount": 1000,
-  "item_description": "Books",
-  "weight": 1,
-  "length": 10,
-  "breadth": 10,
-  "height": 10
+  "address": "Street 123",
+  "city": "Chennai",
+  "state": "TN",
+  "pincode": "600001",
+  "amount": 500,
+  "weight": 1.5
 }
-```
 
----
-
-### Track Order
-
-```http
-GET /api/v1/orders/:orderId/track
-```
-
-Example:
-
-```http
-GET /api/v1/orders/TF_xxxxx/track
-```
-
----
-
-### Cancel Order
-
-```http
-POST /api/v1/orders/:orderId/cancel
-```
-
-Example:
-
-```http
-POST /api/v1/orders/TF_xxxxx/cancel
-```
-
----
-
-## How to Test
-
-You can test APIs using:
-
-- Postman
-- Thunder Client
-- cURL
-
-Recommended order:
-
-1. Create Order
-2. Track Order
-3. Cancel Order
-
----
-
-## Idempotency
-
-Duplicate shipment creation is prevented using `order_id`.
-
-If the same `order_id` is received again, the existing order is returned instead of creating a new shipment.
-
----
-
-## Adding a New Courier Partner
-
-The platform is designed to support new courier integrations with minimal changes.
-
-### Step 1: Create Courier File
-
-Create a new file:
-
-```txt
-src/courier/delhivery.js
-```
-
-Implement the same contract:
-
-```js
-const createOrder = async payload => {};
-
-const trackOrder = async awbNumber => {};
-
-const cancelOrder = async awbNumber => {};
-
-module.exports = {
-  createOrder,
-  trackOrder,
-  cancelOrder
-};
-```
-
-### Step 2: Register Courier
-
-Update:
-
-```txt
-src/courier/index.js
-```
-
-Example:
-
-```js
-const delhivery = require('./delhivery');
-
-switch (
-  courierPartner?.toLowerCase()
-) {
-  case 'urbanebolt':
-    return urbanebolt;
-
-  case 'delhivery':
-    return delhivery;
+Response:
+{
+  "success": true,
+  "message": "Order created successfully",
+  "data": {
+    "internalOrderId": "TF_xxx",
+    "status": "CREATED"
+  }
 }
-```
-
-No controller changes are required.
 
 ---
 
-## Assumptions
+### 2. Track Order
 
-- Urbanebolt UAT APIs are used.
-- Only single shipment APIs are implemented.
-- MongoDB is used for persistence.
+GET /orders/:orderId/track?courier_partner=dhl
+
+Response:
+{
+  "success": true,
+  "message": "Tracking fetched successfully",
+  "data": {
+    "status": "IN_TRANSIT"
+  }
+}
+
+---
+
+### 3. Cancel Order
+
+POST /orders/:orderId/cancel
+
+Request:
+{
+  "courier_partner": "dhl"
+}
+
+Response:
+{
+  "success": true,
+  "message": "Order cancelled successfully",
+  "data": {
+    "status": "CANCELLED"
+  }
+}
+
+---
+
+## 🧠 Features
+
+- Multi-courier abstraction layer
+- Unified order management API
+- Idempotent order creation
+- Tracking history storage
+- API key security
+- Joi validation
+- Centralized error handling
+
+---
+
+## 📊 Data Models
+
+Order:
+- internalOrderId (UUID)
+- clientOrderId
+- courierPartner
+- courierOrderId
+- awbNumber
+- status
+- requestPayload
+- responsePayload
+
+TrackingHistory:
+- internalOrderId
+- courierPartner
+- status
+- rawPayload
+- timestamp
+
+---
+
+## ⚠️ Error Format
+
+{
+  "success": false,
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Error message",
+    "details": null
+  }
+}
+
+---
+
+## 🔧 Setup Instructions
+
+1. Install dependencies:
+npm install
+
+2. Create .env file:
+MONGO_URI=mongodb://localhost:27017/courier
+API_KEY=your-secret-key
+PORT=3000
+
+3. Run server:
+npm start
+
+---
+
+## 🧪 Health Check
+
+GET /health
+
+Response:
+{
+  "success": true,
+  "message": "Server is running"
+}
+
+---
+
+## 📌 Future Enhancements
+
+- Kafka-based tracking updates
+- Circuit breaker for courier APIs
+- Webhook support
+- Admin dashboard
+- Multi-courier fallback routing

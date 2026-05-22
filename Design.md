@@ -1,191 +1,173 @@
-# Design Overview
-
-## Architecture
-
-The application follows a modular architecture where controllers are decoupled from courier-specific implementations.
-
-The system is designed so that new courier providers can be added with minimal changes to the core application.
-
-High-level flow:
-
-```txt
-Client Request
-      ↓
-Controller
-      ↓
-Courier Factory
-      ↓
-Courier Partner
-      ↓
-Database
-      ↓
-Response
-```
+# 🏗️ Courier Aggregation System Design
 
 ---
 
-## Design Pattern Used
+## 📌 Overview
 
-### Factory Pattern
+This system is a Courier Aggregation Layer that unifies multiple courier partners (DHL, Delhivery, etc.) into a single API interface for:
 
-A factory pattern is used to dynamically select courier partners.
-
-File:
-
-```txt
-src/courier/index.js
-```
-
-Based on the `courier_partner` value, the appropriate courier implementation is returned.
-
-Example:
-
-```js
-const CourierPartner =
-  getCourierPartner(
-    courier_partner
-  );
-
-await CourierPartner.createOrder(
-  payload
-);
-```
-
-### Why Factory Pattern?
-
-The factory pattern was chosen for the following reasons:
-
-1. Controllers remain independent of courier-specific logic.
-2. New courier integrations can be added with minimal code changes.
-3. A common function contract is maintained across courier partners.
-4. Courier-specific implementation details remain isolated.
-
-Each courier implementation exposes the same methods:
-
-```js
-createOrder()
-trackOrder()
-cancelOrder()
-```
-
-This ensures consistency across integrations.
+- Order creation
+- Tracking shipments
+- Cancelling orders
+- Tracking history storage
 
 ---
 
-## Database Design
+## 🎯 Goals
 
-### Order Collection
-
-Stores shipment-level information.
-
-| Field | Description |
-|--------|-------------|
-| internalOrderId | Internal unique identifier |
-| clientOrderId | Consumer-provided order id |
-| courierPartner | Selected courier partner |
-| courierOrderId | Courier-generated order id |
-| awbNumber | Tracking number |
-| status | Shipment status |
-| requestPayload | Incoming payload |
-| responsePayload | Courier response |
-
-Indexes:
-
-- `internalOrderId`
-- `clientOrderId`
-
-Purpose:
-
-- Idempotency handling
-- Shipment lookup
-- Tracking and cancellation
+- Unified courier abstraction
+- Easy addition of new courier partners
+- Reliable tracking system
+- Idempotent order creation
+- Secure API access
 
 ---
 
-### TrackingHistory Collection
+## 🧱 Architecture
 
-Stores shipment tracking history.
-
-| Field | Description |
-|--------|-------------|
-| internalOrderId | Internal order reference |
-| courierPartner | Courier provider |
-| status | Shipment status |
-| rawPayload | Courier response payload |
-
-Indexes:
-
-- `internalOrderId`
-- `trackedAt`
-
-Purpose:
-
-- Tracking history
-- Auditing
-- Shipment status timeline
+Client
+  ↓
+Express API Layer
+  ↓
+Middleware Layer (Auth + Validation)
+  ↓
+Controller Layer
+  ↓
+Courier Factory (Switch-based routing)
+  ↓
+Courier Partner APIs (DHL, Delhivery)
+  ↓
+MongoDB (Orders + TrackingHistory)
 
 ---
 
-## Validation Strategy
+## 🔁 Request Flow
 
-Joi validation is used to validate incoming request payloads before processing.
+Create Order:
+Client → API → Validation → Controller → Courier Factory → Partner API → DB → Response
 
-Invalid requests return HTTP 400 with field-level validation errors.
+Track Order:
+Client → API → Controller → DB → Courier API → Update DB → Response
 
-Example:
-
-```json
-{
-  "success": false,
-  "message": "Validation failed",
-  "errors": [
-    {
-      "field": "customer_name",
-      "message": "\"customer_name\" is required"
-    }
-  ]
-}
-```
+Cancel Order:
+Client → API → Controller → DB → Courier API → Update DB → TrackingHistory → Response
 
 ---
 
-## Error Handling
+## 🧩 Core Modules
 
-A centralized error handler is used to maintain consistent API responses.
-
-Example:
-
-```json
-{
-  "success": false,
-  "message": "Failed to create shipment"
-}
-```
+### Controller Layer
+Handles business logic:
+- createOrder
+- trackOrder
+- cancelOrder
 
 ---
 
-## Trade-offs
+### Courier Factory
+Switch-based implementation:
+getCourierPartner("dhl") → DHL implementation
 
-### Why No Service Layer?
-
-A separate service layer was intentionally avoided to keep the solution simple and maintainable for the current scope.
-
-Since the business logic is limited, controller-level orchestration was considered sufficient.
-
-A service layer can be introduced later if the application grows.
-
-### Why MongoDB?
-
-MongoDB was selected due to its flexible schema support for courier request and response payloads.
-
-Different courier providers may return different response structures, and MongoDB makes storing raw payloads easier.
+Each courier supports:
+- createOrder()
+- trackOrder()
+- cancelOrder()
 
 ---
 
-## Future Improvements
+### Middleware Layer
+- authMiddleware → API key validation
+- validationMiddleware → Joi validation
+- errorMiddleware → centralized error handling
 
-- Multiple courier integrations
-- Webhook support
-- Retry strategy for courier APIs
-- Rate limiting
-- Better shipment status normalization
+---
+
+### Database Layer
+
+Orders Collection:
+- internalOrderId
+- clientOrderId
+- courierOrderId
+- status
+- requestPayload
+- responsePayload
+
+TrackingHistory Collection:
+- internalOrderId
+- courierPartner
+- status updates
+- raw responses
+- timestamps
+
+---
+
+## 🔐 Security Design
+
+- API Key authentication (x-api-key)
+- Joi validation for input
+- Centralized error handling
+- No direct courier exposure to client
+
+---
+
+## 📦 Idempotency Strategy
+
+clientOrderId (order_id) is used to prevent duplicates
+
+Flow:
+- If order exists → return existing order
+- Else → create new order
+
+---
+
+## 📊 Order Status Flow
+
+CREATED
+↓
+IN_TRANSIT
+↓
+DELIVERED
+OR
+CANCELLED
+OR
+FAILED
+
+---
+
+## ⚠️ Failure Handling
+
+- Courier failure → status = FAILED
+- Error stored in responsePayload
+- Logged using logger utility
+- Safe fallback response ensured
+
+---
+
+## 📈 Future Enhancements
+
+- Redis caching for tracking
+- Kafka event streaming for status updates
+- Circuit breaker for courier APIs
+- Multi-courier fallback routing
+- Webhook-based updates
+
+---
+
+## 🧠 Design Principles
+
+- Factory Pattern
+- Controller separation
+- Stateless API design
+- Idempotent operations
+- Modular architecture
+
+---
+
+## 🚀 Summary
+
+This system is:
+
+✔ Extensible  
+✔ Modular  
+✔ Courier-agnostic  
+✔ Production-ready base architecture  
