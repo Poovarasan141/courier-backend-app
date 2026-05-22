@@ -1,8 +1,8 @@
-# 🏗️ Courier Aggregation System Design
+# Courier Aggregation System Design
 
 ---
 
-## 📌 Overview
+## Overview
 
 This system is a Courier Aggregation Layer that unifies multiple courier partners (DHL, Delhivery, etc.) into a single API interface for:
 
@@ -13,7 +13,7 @@ This system is a Courier Aggregation Layer that unifies multiple courier partner
 
 ---
 
-## 🎯 Goals
+## Goals
 
 - Unified courier abstraction
 - Easy addition of new courier partners
@@ -23,7 +23,7 @@ This system is a Courier Aggregation Layer that unifies multiple courier partner
 
 ---
 
-## 🧱 Architecture
+## Architecture
 
 Client
   ↓
@@ -41,7 +41,7 @@ MongoDB (Orders + TrackingHistory)
 
 ---
 
-## 🔁 Request Flow
+## Request Flow
 
 Create Order:
 Client → API → Validation → Controller → Courier Factory → Partner API → DB → Response
@@ -54,7 +54,7 @@ Client → API → Controller → DB → Courier API → Update DB → TrackingH
 
 ---
 
-## 🧩 Core Modules
+## Core Modules
 
 ### Controller Layer
 Handles business logic:
@@ -101,7 +101,7 @@ TrackingHistory Collection:
 
 ---
 
-## 🔐 Security Design
+## Security Design
 
 - API Key authentication (x-api-key)
 - Joi validation for input
@@ -110,7 +110,7 @@ TrackingHistory Collection:
 
 ---
 
-## 📦 Idempotency Strategy
+## Idempotency Strategy
 
 clientOrderId (order_id) is used to prevent duplicates
 
@@ -120,7 +120,7 @@ Flow:
 
 ---
 
-## 📊 Order Status Flow
+## Order Status Flow
 
 CREATED
 ↓
@@ -134,7 +134,7 @@ FAILED
 
 ---
 
-## ⚠️ Failure Handling
+## Failure Handling
 
 - Courier failure → status = FAILED
 - Error stored in responsePayload
@@ -143,31 +143,10 @@ FAILED
 
 ---
 
-## 📈 Future Enhancements
-
-- Redis caching for tracking
-- Kafka event streaming for status updates
-- Circuit breaker for courier APIs
-- Multi-courier fallback routing
-- Webhook-based updates
-
----
-
-## 🧠 Design Principles
-
-- Factory Pattern
-- Controller separation
-- Stateless API design
-- Idempotent operations
-- Modular architecture
-
----
-
-## 🚀 Summary
+## Summary
 
 This system is:
 
 ✔ Extensible  
 ✔ Modular  
-✔ Courier-agnostic  
 ✔ Production-ready base architecture  

@@ -1,29 +1,15 @@
-# 🚚 Courier Aggregation Service
+# Courier Aggregation Service
 
 A Node.js + Express backend service that provides a unified API layer over multiple courier partners (DHL, Delhivery, etc.) for order management, tracking, and cancellation.
 
 ---
-
-## 📦 Tech Stack
-
-- Node.js
-- Express.js
-- MongoDB (Mongoose)
-- Joi (Validation)
-- UUID
-- Express Promise Router
-- Morgan (Logging)
-- CORS
-
----
-
 
 ## To add new courier partner.
 1. Create a file courier partner integration file inside couriers folder.
 2. Import this in couriers index.js file.
 3. Nothing is required to enable new partner.
 
-## 🏗️ Project Structure
+## Project Structure
 
 src/
 ├── config/
@@ -52,7 +38,7 @@ src/
 
 ---
 
-## 🔐 Authentication
+## Authentication
 
 All APIs are protected using API Key authentication.
 
@@ -61,13 +47,13 @@ x-api-key: YOUR_API_KEY
 
 ---
 
-## 🚀 Base URL
+## Base URL
 
 /api/v1
 
 ---
 
-## 📌 APIs
+## APIs
 
 ### 1. Create Order
 
@@ -135,7 +121,7 @@ Response:
 
 ---
 
-## 📊 Data Models
+## Data Models
 
 Order:
 - internalOrderId (UUID)
@@ -156,20 +142,7 @@ TrackingHistory:
 
 ---
 
-## ⚠️ Error Format
-
-{
-  "success": false,
-  "error": {
-    "code": "ERROR_CODE",
-    "message": "Error message",
-    "details": null
-  }
-}
-
----
-
-## 🔧 Setup Instructions
+## Setup Instructions
 
 1. Install dependencies:
 npm install
@@ -184,7 +157,7 @@ npm start
 
 ---
 
-## 🧪 Health Check
+## Health Check
 
 GET /health
 
@@ -193,7 +166,6 @@ Response:
   "success": true,
   "message": "Server is running"
 }
-
 
 
 
