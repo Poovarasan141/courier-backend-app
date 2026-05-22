@@ -209,3 +209,20 @@ Response:
 - Webhook support
 - Admin dashboard
 - Multi-courier fallback routing
+
+
+
+
+<!-- PORT=5000
+MONGO_URI=mongodb://localhost:27017/courier-platform
+
+NODE_ENV=development
+
+REQUEST_TIMEOUT=10000
+RETRY_COUNT=3
+API_KEY=FDSVTJYTRH4RTEGREGVYTRHV45
+
+URBANEBOLT_BASE_URL=https://uat.urbanebolt.in/api/v1
+URBANEBOLT_USERNAME=info@urbanebolt.com
+URBANEBOLT_PASSWORD=EKIcygsLVV5RCtPZ
+URBANEBOLT_CUSTOMER_CODE=UEBCUS0008 -->
