@@ -1,6 +1,7 @@
 const { v4: uuidv4 } = require("uuid");
 
 const Order = require("../models/Order");
+const Batch = require("../models/Batch");
 const TrackingHistory = require("../models/TrackingHistory");
 
 const { getCourierPartner } = require("../couriers");
@@ -136,7 +137,7 @@ const trackOrder = async (req, res) => {
 
     await Order.findOneAndUpdate(
       { internalOrderId: orderId },
-      { status: response.status }
+      { status: response.status },
     );
 
     return res.status(200).json({
@@ -186,7 +187,7 @@ const cancelOrder = async (req, res) => {
 
     await Order.findOneAndUpdate(
       { internalOrderId: orderId },
-      { status: response.status }
+      { status: response.status },
     );
 
     await TrackingHistory.create({
@@ -215,12 +216,10 @@ const cancelOrder = async (req, res) => {
 };
 
 const bulkCreateOrders = async (req, res) => {
-  const payload = req.body;
-
   try {
-    const { orders } = payload;
+    const { orders } = req.body;
 
-    if (!Array.isArray(orders) || orders.length === 0) {
+    if (!Array.isArray(orders) || !orders.length) {
       const error = new Error("Orders array is required");
       error.statusCode = 400;
       error.code = "INVALID_REQUEST";
@@ -228,50 +227,72 @@ const bulkCreateOrders = async (req, res) => {
     }
 
     if (orders.length > 100) {
-      const error = new Error("Max 100 orders allowed");
+      const error = new Error("Maximum 100 orders allowed");
       error.statusCode = 400;
       error.code = "LIMIT_EXCEEDED";
       throw error;
     }
 
+    const batchId = `BATCH_${uuidv4()}`;
+
+    /*  Create batch */
+
+    const batch = await Batch.create({
+      batchId,
+      totalOrders: orders.length,
+      status: "PROCESSING",
+    });
+
+    const processedOrderIds = new Set();
+
     const results = await Promise.allSettled(
       orders.map(async (payload) => {
         const { courier_partner, order_id } = payload;
 
-        if (!courier_partner || !order_id) {
-          return {
-            order_id,
-            success: false,
-            error: "Missing required fields",
-          };
-        }
-
-        // Idempotency check (same as single order)
-        const existingOrder = await Order.findOne({
-          clientOrderId: order_id,
-        });
-
-        if (existingOrder) {
-          return {
-            order_id,
-            success: true,
-            skipped: true,
-            message: "Order already exists",
-            data: existingOrder,
-          };
-        }
-
-        const CourierPartner = getCourierPartner(courier_partner);
-
-        if (!CourierPartner) {
-          return {
-            order_id,
-            success: false,
-            error: "Invalid courier partner",
-          };
-        }
-
         try {
+          if (!courier_partner || !order_id) {
+            return {
+              order_id,
+              success: false,
+              error: {
+                code: "INVALID_REQUEST",
+                message: "Missing required fields",
+              },
+            };
+          }
+
+          /* Duplicate inside batch */
+
+          if (processedOrderIds.has(order_id)) {
+            return {
+              order_id,
+              success: false,
+              error: {
+                code: "DUPLICATE_ORDER",
+                message: "Duplicate order_id in same batch",
+              },
+            };
+          }
+
+          processedOrderIds.add(order_id);
+
+          /* Idempotency */
+
+          const existingOrder = await Order.findOne({
+            clientOrderId: order_id,
+          });
+
+          if (existingOrder) {
+            return {
+              order_id,
+              success: true,
+              skipped: true,
+              message: "Order already exists",
+              data: existingOrder,
+            };
+          }
+
+          const CourierPartner = getCourierPartner(courier_partner);
           const courierResponse = await CourierPartner.createOrder(payload);
 
           const order = await Order.create({
@@ -279,8 +300,8 @@ const bulkCreateOrders = async (req, res) => {
             clientOrderId: order_id,
             courierPartner: courier_partner,
             courierOrderId: courierResponse.courier_order_id,
-            shipmentId: courierResponse.shipment_id,
-            awbNumber: courierResponse.awb_number,
+            shipmentId: courierResponse.shipment_id || null,
+            awbNumber: courierResponse.awb_number || null,
             status: courierResponse.status,
             requestPayload: payload,
             responsePayload: courierResponse,
@@ -298,27 +319,59 @@ const bulkCreateOrders = async (req, res) => {
             success: true,
             data: order,
           };
-        } catch (err) {
+        } catch (error) {
+          logger({
+            requestId: req.headers["x-request-id"] || null,
+            orderId: order_id,
+            courierPartner: courier_partner,
+            errorType: error.code || "ORDER_CREATE_FAILED",
+            error,
+          });
+
           return {
             order_id,
             success: false,
-            error: err.message,
+            error: {
+              code: error.code || "ORDER_CREATE_FAILED",
+              message: error.message,
+            },
           };
         }
-      })
+      }),
     );
 
-    const finalResults = results.map((r) => r.value);
+    const finalResults = results.map((result) => result.value);
+    const successCount = finalResults.filter((item) => item.success).length;
+    const failedCount = finalResults.length - successCount;
+
+    await Batch.updateOne(
+      {batchId },
+      {
+        processedOrders: finalResults.length,
+        successOrders: successCount,
+        failedOrders: failedCount,
+        status: failedCount === finalResults.length ? "FAILED" : "COMPLETED",
+        results: finalResults,
+      },
+    );
 
     return res.status(200).json({
       success: true,
-      message: "Bulk order processing completed",
+      batch_id: batchId,
+      summary: {
+        total: orders.length,
+        success: successCount,
+        failed: failedCount,
+      },
+
       results: finalResults,
     });
   } catch (error) {
     logger({
       requestId: req.headers["x-request-id"] || null,
-      errorType: error.code || "BULK_CREATE_ORDER_FAILED",
+
+      errorType: error.code || "BULK_ORDER_FAILED",
+
       error,
     });
 
